@@ -28,11 +28,21 @@ DT102 = (
     "DT102 use 'import datetime' instead of "
     "'from datetime import timedelta'"
 )
+DB100 = "DB100 do not commit debugger imports"
+DB101 = "DB101 do not commit debugger calls"
 
 DATETIME_IMPORT_MESSAGES = {
     "datetime": DT100,
     "date": DT101,
     "timedelta": DT102,
+}
+DEBUGGER_MODULES = {"pdb", "ipdb", "pudb", "wdb"}
+DEBUGGER_METHODS = {
+    "set_trace",
+    "post_mortem",
+    "pm",
+    "runcall",
+    "runctx",
 }
 
 
@@ -55,6 +65,16 @@ class HtkVisitor(ast.NodeVisitor):
         self.filename = filename
         self.structured_programming_files = structured_programming_files
         self.violations: list[Violation] = []
+        self._debugger_module_aliases: set[str] = set()
+        self._debugger_call_aliases: set[str] = set()
+
+    def visit_Import(self, node: ast.Import) -> None:
+        for alias in node.names:
+            root_module = alias.name.split(".", 1)[0]
+            if root_module in DEBUGGER_MODULES:
+                self._debugger_module_aliases.add(alias.asname or root_module)
+                self._add(alias, node, DB100)
+        self.generic_visit(node)
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
         if node.module == "datetime" and node.level == 0:
@@ -62,6 +82,26 @@ class HtkVisitor(ast.NodeVisitor):
                 message = DATETIME_IMPORT_MESSAGES.get(alias.name)
                 if message is not None:
                     self._add(alias, node, message)
+
+        root_module = (node.module or "").split(".", 1)[0]
+        if root_module in DEBUGGER_MODULES:
+            for alias in node.names:
+                self._add(alias, node, DB100)
+                if alias.name == "*":
+                    self._debugger_call_aliases.update(DEBUGGER_METHODS)
+                elif alias.name in DEBUGGER_METHODS:
+                    self._debugger_call_aliases.add(alias.asname or alias.name)
+
+        self.generic_visit(node)
+
+    def visit_Call(self, node: ast.Call) -> None:
+        name = _call_name(node.func)
+        if _is_debugger_call(
+            name,
+            module_aliases=self._debugger_module_aliases,
+            call_aliases=self._debugger_call_aliases,
+        ):
+            self._add(node, node, DB101)
         self.generic_visit(node)
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
@@ -130,6 +170,36 @@ def _is_simple_return_value(value: ast.expr | None) -> bool:
     return value is None or isinstance(
         value,
         (ast.Name, ast.Attribute, ast.Constant),
+    )
+
+
+def _call_name(node: ast.AST) -> str:
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute):
+        parent_name = _call_name(node.value)
+        if parent_name:
+            return f"{parent_name}.{node.attr}"
+        return node.attr
+    return ""
+
+
+def _is_debugger_call(
+    name: str,
+    *,
+    module_aliases: set[str],
+    call_aliases: set[str],
+) -> bool:
+    if name == "breakpoint" or name in call_aliases:
+        return True
+    if "." not in name:
+        return False
+
+    module_name, method_name = name.rsplit(".", 1)
+    root_module = module_name.split(".", 1)[0]
+    return (
+        method_name in DEBUGGER_METHODS
+        and root_module in DEBUGGER_MODULES | module_aliases
     )
 
 

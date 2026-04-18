@@ -24,6 +24,8 @@ python -m unittest discover -s tests -v
 | `DT100` | Use `import datetime` instead of `from datetime import datetime`. |
 | `DT101` | Use `import datetime` instead of `from datetime import date`. |
 | `DT102` | Use `import datetime` instead of `from datetime import timedelta`. |
+| `DB100` | Do not commit debugger imports such as `import pdb`. |
+| `DB101` | Do not commit debugger calls such as `breakpoint()` or `pdb.set_trace()`. |
 
 ## Flake8 Configuration
 
@@ -31,7 +33,7 @@ Enable the structured-programming and datetime rules:
 
 ```ini
 [flake8]
-select = SP,DT
+select = SP,DT,DB
 structured-programming-files =
     accounts/services.py
     accounts/view_helpers.py
@@ -42,7 +44,7 @@ Or combine with existing checks:
 
 ```ini
 [flake8]
-extend-select = SP,DT
+extend-select = SP,DT,DB,DB
 structured-programming-files =
     accounts/services.py
     accounts/view_helpers.py
@@ -50,7 +52,8 @@ structured-programming-files =
 ```
 
 The `SP` rules are gated by `structured-programming-files` so teams can roll them
-out on a targeted set of modules. The `DT` rules are always active when selected.
+out on a targeted set of modules. The `DT` and `DB` rules are always active when
+selected.
 
 ## Development
 

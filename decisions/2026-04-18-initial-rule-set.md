@@ -25,10 +25,12 @@ Ship the task-backed rule set instead of the placeholder debug checks:
 - `DT100` flags `from datetime import datetime`.
 - `DT101` flags `from datetime import date`.
 - `DT102` flags `from datetime import timedelta`.
+- `DB100` flags debugger imports.
+- `DB101` flags debugger calls.
 
 Structured programming checks are gated by `--structured-programming-files`,
 matching the original accounts-django rollout pattern. Datetime checks are
-always available when `DT` rules are selected.
+always available when their `DT` or `DB` rules are selected.
 
 ## Action Items
 

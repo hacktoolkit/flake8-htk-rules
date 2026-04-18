@@ -26,6 +26,8 @@ DT102 = (
     "DT102 use 'import datetime' instead of "
     "'from datetime import timedelta'"
 )
+DB100 = "DB100 do not commit debugger imports"
+DB101 = "DB101 do not commit debugger calls"
 
 
 def run_plugin(
@@ -133,6 +135,56 @@ def outer(value):
         )
 
         self.assertEqual(messages, [DT101, DT100, DT102])
+
+    def test_flags_builtin_breakpoint(self) -> None:
+        messages = run_plugin(
+            """
+def handler():
+    breakpoint()
+"""
+        )
+
+        self.assertEqual(messages, [DB101])
+
+    def test_flags_debugger_module_import_and_call(self) -> None:
+        messages = run_plugin(
+            """
+import pdb
+import ipdb as debugger
+
+def handler():
+    pdb.set_trace()
+    debugger.set_trace()
+"""
+        )
+
+        self.assertEqual(messages, [DB100, DB100, DB101, DB101])
+
+    def test_flags_imported_debugger_call_alias(self) -> None:
+        messages = run_plugin(
+            """
+from pdb import set_trace
+from ipdb import set_trace as trace
+
+def handler():
+    set_trace()
+    trace()
+"""
+        )
+
+        self.assertEqual(messages, [DB100, DB100, DB101, DB101])
+
+    def test_flags_debugger_wildcard_imported_call(self) -> None:
+        messages = run_plugin(
+            """
+from pdb import *
+
+def handler():
+    set_trace()
+"""
+        )
+
+        self.assertEqual(messages, [DB100, DB101])
 
 
 if __name__ == "__main__":
