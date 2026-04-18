@@ -30,6 +30,11 @@ DT102 = (
 )
 DB100 = "DB100 do not commit debugger imports"
 DB101 = "DB101 do not commit debugger calls"
+NM100 = (
+    "NM100 avoid get_ function prefix; choose a more precise verb "
+    "such as build_, calculate_, extract_, fetch_, look_up_, "
+    "retrieve_, format_, or transform_"
+)
 
 DATETIME_IMPORT_MESSAGES = {
     "datetime": DT100,
@@ -116,6 +121,9 @@ class HtkVisitor(ast.NodeVisitor):
         self,
         node: ast.FunctionDef | ast.AsyncFunctionDef,
     ) -> None:
+        if node.name.startswith("get_"):
+            self._add(node, node, NM100)
+
         if not self._should_run_structured_programming_checks():
             return
 

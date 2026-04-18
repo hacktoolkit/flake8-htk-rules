@@ -28,6 +28,11 @@ DT102 = (
 )
 DB100 = "DB100 do not commit debugger imports"
 DB101 = "DB101 do not commit debugger calls"
+NM100 = (
+    "NM100 avoid get_ function prefix; choose a more precise verb "
+    "such as build_, calculate_, extract_, fetch_, look_up_, "
+    "retrieve_, format_, or transform_"
+)
 
 
 def run_plugin(
@@ -185,6 +190,36 @@ def handler():
         )
 
         self.assertEqual(messages, [DB100, DB101])
+
+    def test_flags_get_prefixed_function_name(self) -> None:
+        messages = run_plugin(
+            """
+def get_total(items):
+    return sum(items)
+"""
+        )
+
+        self.assertEqual(messages, [NM100])
+
+    def test_flags_get_prefixed_async_function_name(self) -> None:
+        messages = run_plugin(
+            """
+async def get_story_details(story_id):
+    return story_id
+"""
+        )
+
+        self.assertEqual(messages, [NM100])
+
+    def test_allows_non_get_prefixed_function_name(self) -> None:
+        messages = run_plugin(
+            """
+def fetch_story_details(story_id):
+    return story_id
+"""
+        )
+
+        self.assertEqual(messages, [])
 
 
 if __name__ == "__main__":
