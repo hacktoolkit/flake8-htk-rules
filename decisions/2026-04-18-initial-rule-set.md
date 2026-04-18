@@ -8,17 +8,20 @@ Linear task `JON-261` points at the `accounts-django` seed commit
 structured programming rules.
 
 The Linear comments also call out Jonathan's datetime clarity preference from
-his blog post on fully qualified datetime usage.
+his blog post on fully qualified datetime usage. Follow-up Slack feedback added
+explicit debugger prevention and the `get_` naming rule from Jonathan's writing
+on vague function prefixes.
 
 ## Options
 
-- Preserve the first placeholder debug-output checks.
-- Extract the `accounts-django` structured programming checker and add the
-  datetime import rules from the Linear task comments.
+- Keep the first placeholder debug-output-only rule set.
+- Extract the `accounts-django` structured programming checker, then add the
+  task/comment-backed datetime, debugger, and naming rules.
 
 ## Decision
 
-Ship the task-backed rule set instead of the placeholder debug checks:
+Ship the task-backed rule set and keep debugger prevention as a first-class rule
+family:
 
 - `SP100` flags multiple returns in a configured function.
 - `SP101` flags complex return expressions in configured files.
@@ -30,11 +33,12 @@ Ship the task-backed rule set instead of the placeholder debug checks:
 - `NM100` flags functions and methods named with the vague `get_` prefix.
 
 Structured programming checks are gated by `--structured-programming-files`,
-matching the original accounts-django rollout pattern. Datetime checks are
-always available when their `DT`, `DB`, or `NM` rules are selected.
+matching the original accounts-django rollout pattern. Datetime, debugger, and
+naming checks are always available when their `DT`, `DB`, or `NM` rules are
+selected.
 
 ## Action Items
 
-- Add more rule families from Jonathan's writing only after the first extracted
-  SP/DT set is stable.
+- Add more rule families from Jonathan's writing only after the current SP, DT,
+  DB, and NM rules are stable.
 - Consider a future ESLint package separately if real JavaScript rules emerge.

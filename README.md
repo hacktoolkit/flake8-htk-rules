@@ -1,6 +1,7 @@
 # flake8-htk-rules
 
-Hacktoolkit Flake8 rules for structured Python code and datetime clarity.
+Hacktoolkit Flake8 rules for structured Python code, datetime clarity,
+debugger prevention, and naming precision.
 
 ## Installation
 
@@ -24,9 +25,9 @@ python -m unittest discover -s tests -v
 | `DT100` | Use `import datetime` instead of `from datetime import datetime`. |
 | `DT101` | Use `import datetime` instead of `from datetime import date`. |
 | `DT102` | Use `import datetime` instead of `from datetime import timedelta`. |
-| `DB100` | Do not commit debugger imports such as `import pdb`. |
+| `DB100` | Do not commit debugger imports such as `import pdb` or `from pdb import set_trace`. |
 | `DB101` | Do not commit debugger calls such as `breakpoint()` or `pdb.set_trace()`. |
-| `NM100` | Avoid the vague `get_` function prefix; choose a more precise verb. |
+| `NM100` | Avoid the vague `get_` function or method prefix; choose a more precise verb. |
 
 ## Flake8 Configuration
 
