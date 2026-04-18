@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "flake8-htk-rules"
 version = "0.1.0"
-description = "Hacktoolkit Flake8 rules for catching code that should not ship."
+description = "Hacktoolkit Flake8 rules for structured Python code and datetime clarity."
 readme = "README.md"
 requires-python = ">=3.9"
 license = "MIT"

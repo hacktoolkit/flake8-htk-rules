@@ -3,23 +3,35 @@
 ## Context
 
 The repo is intended to be a standalone Flake8 plugin for Hacktoolkit rules.
-The original `accounts-django` extraction source was not available in the
-local workspace, and GitHub access from this runtime was blocked by DNS.
+Linear task `JON-261` points at the `accounts-django` seed commit
+`27b9a788a25117fbdb14158704928564d5370337`, whose custom checker introduced
+structured programming rules.
+
+The Linear comments also call out Jonathan's datetime clarity preference from
+his blog post on fully qualified datetime usage.
 
 ## Options
 
-- Wait for the source repo to become available.
-- Create a real plugin package with conservative initial checks and tests.
+- Preserve the first placeholder debug-output checks.
+- Extract the `accounts-django` structured programming checker and add the
+  datetime import rules from the Linear task comments.
 
 ## Decision
 
-Create a standalone package with a modern `pyproject.toml`, `src/` layout,
-Flake8 entry point, CI, and an initial HTK rule set focused on code that should
-not ship: `print`, debugger traps, and HTK debug helpers.
+Ship the task-backed rule set instead of the placeholder debug checks:
+
+- `SP100` flags multiple returns in a configured function.
+- `SP101` flags complex return expressions in configured files.
+- `DT100` flags `from datetime import datetime`.
+- `DT101` flags `from datetime import date`.
+- `DT102` flags `from datetime import timedelta`.
+
+Structured programming checks are gated by `--structured-programming-files`,
+matching the original accounts-django rollout pattern. Datetime checks are
+always available when `DT` rules are selected.
 
 ## Action Items
 
-- Add the exact extracted `accounts-django` rules once that source is reachable.
-- Push this package to `hacktoolkit/flake8-htk-rules` when GitHub access is
-  available.
-
+- Add more rule families from Jonathan's writing only after the first extracted
+  SP/DT set is stable.
+- Consider a future ESLint package separately if real JavaScript rules emerge.

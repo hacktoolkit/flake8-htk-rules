@@ -1,6 +1,6 @@
 # flake8-htk-rules
 
-Hacktoolkit Flake8 rules for catching code that should not ship.
+Hacktoolkit Flake8 rules for structured Python code and datetime clarity.
 
 ## Installation
 
@@ -19,23 +19,38 @@ python -m unittest discover -s tests -v
 
 | Code | Description |
 | --- | --- |
-| `HTK100` | Do not commit `print(...)` calls. |
-| `HTK101` | Do not commit debugger traps such as `breakpoint()` or `pdb.set_trace()`. |
-| `HTK102` | Do not commit HTK debug helper calls such as `fdb(...)` or `slack_debug(...)`. |
+| `SP100` | Functions in configured files should prefer a single return statement. |
+| `SP101` | Return values in configured files should be simple variables, attributes, literals, or bare returns. |
+| `DT100` | Use `import datetime` instead of `from datetime import datetime`. |
+| `DT101` | Use `import datetime` instead of `from datetime import date`. |
+| `DT102` | Use `import datetime` instead of `from datetime import timedelta`. |
 
 ## Flake8 Configuration
 
+Enable the structured-programming and datetime rules:
+
 ```ini
 [flake8]
-select = HTK
+select = SP,DT
+structured-programming-files =
+    accounts/services.py
+    accounts/view_helpers.py
+    accounts/views.py
 ```
 
 Or combine with existing checks:
 
 ```ini
 [flake8]
-extend-select = HTK
+extend-select = SP,DT
+structured-programming-files =
+    accounts/services.py
+    accounts/view_helpers.py
+    accounts/views.py
 ```
+
+The `SP` rules are gated by `structured-programming-files` so teams can roll them
+out on a targeted set of modules. The `DT` rules are always active when selected.
 
 ## Development
 

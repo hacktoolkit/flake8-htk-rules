@@ -3,22 +3,36 @@
 from __future__ import annotations
 
 import ast
+import os
 from dataclasses import dataclass
+from fnmatch import fnmatch
 
 
-HTK100 = "HTK100 do not commit print() calls"
-HTK101 = "HTK101 do not commit debugger traps"
-HTK102 = "HTK102 do not commit HTK debug helper calls"
+SP100 = (
+    "SP100 function '{name}' has {count} return statements; "
+    "prefer a single return per function"
+)
+SP101 = (
+    "SP101 return value should be a simple variable, attribute, or literal, "
+    "not a complex expression"
+)
+DT100 = (
+    "DT100 use 'import datetime' instead of "
+    "'from datetime import datetime'"
+)
+DT101 = (
+    "DT101 use 'import datetime' instead of "
+    "'from datetime import date'"
+)
+DT102 = (
+    "DT102 use 'import datetime' instead of "
+    "'from datetime import timedelta'"
+)
 
-DEBUG_MODULES = {"pdb", "ipdb", "pudb", "wdb"}
-DEBUG_METHODS = {"set_trace", "post_mortem", "pm", "runcall", "runctx"}
-HTK_DEBUG_HELPERS = {
-    "fdb",
-    "fdb_json",
-    "fdebug",
-    "fdebug_json",
-    "slack_debug",
-    "slack_debug_json",
+DATETIME_IMPORT_MESSAGES = {
+    "datetime": DT100,
+    "date": DT101,
+    "timedelta": DT102,
 }
 
 
@@ -30,79 +44,110 @@ class Violation:
 
 
 class HtkVisitor(ast.NodeVisitor):
-    """Collect HTK rule violations from a Python AST."""
+    """Collect Hacktoolkit rule violations from a Python AST."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        filename: str,
+        structured_programming_files: tuple[str, ...] = (),
+    ) -> None:
+        self.filename = filename
+        self.structured_programming_files = structured_programming_files
         self.violations: list[Violation] = []
-        self._debug_aliases: set[str] = set()
-        self._helper_aliases: set[str] = set()
-
-    def visit_Import(self, node: ast.Import) -> None:
-        for alias in node.names:
-            module_name = alias.name.split(".", 1)[0]
-            if module_name in DEBUG_MODULES:
-                self._debug_aliases.add(alias.asname or module_name)
-        self.generic_visit(node)
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
-        module_name = (node.module or "").split(".", 1)[0]
-        if module_name in DEBUG_MODULES:
+        if node.module == "datetime" and node.level == 0:
             for alias in node.names:
-                if alias.name in DEBUG_METHODS or alias.name == "*":
-                    self._debug_aliases.add(alias.asname or alias.name)
-        if module_name == "htk":
-            for alias in node.names:
-                if alias.name in HTK_DEBUG_HELPERS or alias.name == "*":
-                    self._helper_aliases.add(alias.asname or alias.name)
+                message = DATETIME_IMPORT_MESSAGES.get(alias.name)
+                if message is not None:
+                    self._add(alias, node, message)
         self.generic_visit(node)
 
-    def visit_Call(self, node: ast.Call) -> None:
-        name = _call_name(node.func)
-        if name == "print":
-            self._add(node, HTK100)
-        elif _is_debugger_call(name, self._debug_aliases):
-            self._add(node, HTK101)
-        elif _is_htk_debug_helper(name, self._helper_aliases):
-            self._add(node, HTK102)
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+        self._check_function(node)
         self.generic_visit(node)
 
-    def _add(self, node: ast.AST, message: str) -> None:
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
+        self._check_function(node)
+        self.generic_visit(node)
+
+    def _check_function(
+        self,
+        node: ast.FunctionDef | ast.AsyncFunctionDef,
+    ) -> None:
+        if not self._should_run_structured_programming_checks():
+            return
+
+        returns = _collect_returns(node)
+        if len(returns) > 1:
+            self._add(
+                node,
+                node,
+                SP100.format(name=node.name, count=len(returns)),
+            )
+
+        for return_node in returns:
+            if not _is_simple_return_value(return_node.value):
+                self._add(return_node, return_node, SP101)
+
+    def _should_run_structured_programming_checks(self) -> bool:
+        if not self.structured_programming_files:
+            return False
+
+        relative_path = os.path.relpath(self.filename, os.getcwd()).replace(
+            os.sep,
+            "/",
+        )
+        return any(
+            fnmatch(relative_path, pattern)
+            for pattern in self.structured_programming_files
+        )
+
+    def _add(self, node: ast.AST, fallback: ast.AST, message: str) -> None:
         self.violations.append(
             Violation(
-                line=getattr(node, "lineno", 1),
-                column=getattr(node, "col_offset", 0),
+                line=getattr(node, "lineno", getattr(fallback, "lineno", 1)),
+                column=getattr(
+                    node,
+                    "col_offset",
+                    getattr(fallback, "col_offset", 0),
+                ),
                 message=message,
             )
         )
 
 
-def _call_name(node: ast.AST) -> str:
-    if isinstance(node, ast.Name):
-        return node.id
-    if isinstance(node, ast.Attribute):
-        parent_name = _call_name(node.value)
-        if parent_name:
-            return f"{parent_name}.{node.attr}"
-        return node.attr
-    return ""
+def _collect_returns(
+    function_node: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> list[ast.Return]:
+    collector = _ReturnCollector(function_node)
+    collector.visit(function_node)
+    return collector.returns
 
 
-def _is_debugger_call(name: str, aliases: set[str]) -> bool:
-    if name == "breakpoint":
-        return True
-    if name in aliases:
-        return True
-    if "." not in name:
-        return False
-    module_name, method_name = name.rsplit(".", 1)
-    return module_name in DEBUG_MODULES | aliases and method_name in DEBUG_METHODS
+def _is_simple_return_value(value: ast.expr | None) -> bool:
+    return value is None or isinstance(
+        value,
+        (ast.Name, ast.Attribute, ast.Constant),
+    )
 
 
-def _is_htk_debug_helper(name: str, aliases: set[str]) -> bool:
-    if name in HTK_DEBUG_HELPERS | aliases:
-        return True
-    if "." not in name:
-        return False
-    _, method_name = name.rsplit(".", 1)
-    return method_name in HTK_DEBUG_HELPERS
+class _ReturnCollector(ast.NodeVisitor):
+    def __init__(self, root: ast.FunctionDef | ast.AsyncFunctionDef) -> None:
+        self.root = root
+        self.returns: list[ast.Return] = []
 
+    def visit_Return(self, node: ast.Return) -> None:
+        self.returns.append(node)
+
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+        if node is self.root:
+            self.generic_visit(node)
+
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
+        if node is self.root:
+            self.generic_visit(node)
+
+    def visit_Lambda(self, node: ast.Lambda) -> None:
+        return
