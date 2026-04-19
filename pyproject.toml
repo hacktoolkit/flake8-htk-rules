@@ -1,0 +1,46 @@
+[build-system]
+requires = ["hatchling>=1.21"]
+build-backend = "hatchling.build"
+
+[project]
+name = "flake8-htk-rules"
+version = "0.1.0"
+description = "Hacktoolkit Flake8 rules for structured Python, datetime clarity, debugger prevention, and naming precision."
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+authors = [
+  { name = "Hacktoolkit" },
+  { name = "Jonathan Tsai" }
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Framework :: Flake8",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Software Development :: Quality Assurance",
+]
+dependencies = [
+  "flake8>=5",
+]
+
+[project.optional-dependencies]
+dev = [
+  "build>=1.0",
+  "flake8>=5",
+  "pytest>=7",
+]
+
+[project.urls]
+Homepage = "https://github.com/hacktoolkit/flake8-htk-rules"
+Issues = "https://github.com/hacktoolkit/flake8-htk-rules/issues"
+
+[project.entry-points."flake8.extension"]
+HTK = "flake8_htk_rules:Plugin"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/flake8_htk_rules"]
+
