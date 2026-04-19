@@ -59,9 +59,9 @@ active when selected.
 
 ## Development
 
-The plugin is implemented as a single AST checker registered through the
-`flake8.extension` entry point. Add new checks in
-`src/flake8_htk_rules/checks.py` and cover them in `tests/`.
+The plugin uses a single Flake8 entry point and delegates rule logic to
+family modules under `src/flake8_htk_rules/checks/`. Add new rule families
+there and cover them in `tests/`.
 
 Run the test suite without installing the package:
 
