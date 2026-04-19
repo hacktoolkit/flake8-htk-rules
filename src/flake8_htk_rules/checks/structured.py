@@ -58,10 +58,29 @@ def _collect_returns(
 
 
 def _is_simple_return_value(value: ast.expr | None) -> bool:
-    return value is None or isinstance(
-        value,
-        (ast.Name, ast.Attribute, ast.Constant),
+    return (
+        value is None
+        or isinstance(value, (ast.Name, ast.Attribute))
+        or _is_literal_value(value)
     )
+
+
+def _is_literal_value(value: ast.expr) -> bool:
+    if isinstance(value, ast.Constant):
+        return True
+    if isinstance(value, (ast.Tuple, ast.List, ast.Set)):
+        return all(_is_literal_value(element) for element in value.elts)
+    if isinstance(value, ast.Dict):
+        return all(
+            key is not None and _is_literal_value(key)
+            for key in value.keys
+        ) and all(_is_literal_value(item) for item in value.values)
+    if isinstance(value, ast.UnaryOp) and isinstance(
+        value.op,
+        (ast.UAdd, ast.USub),
+    ):
+        return _is_literal_value(value.operand)
+    return False
 
 
 class _ReturnCollector(ast.NodeVisitor):

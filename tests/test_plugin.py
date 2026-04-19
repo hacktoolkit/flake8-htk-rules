@@ -87,6 +87,28 @@ def sample(value):
 
         self.assertEqual(messages, [])
 
+    def test_allows_literal_return_values_for_configured_file(self) -> None:
+        messages = run_plugin(
+            """
+def sample():
+    return {"ok": [1, 2, (3, -4)]}
+""",
+            structured_programming_files=["accounts/services.py"],
+        )
+
+        self.assertEqual(messages, [])
+
+    def test_flags_container_return_with_nonliteral_values(self) -> None:
+        messages = run_plugin(
+            """
+def sample(value):
+    return [value]
+""",
+            structured_programming_files=["accounts/services.py"],
+        )
+
+        self.assertEqual(messages, [SP101])
+
     def test_skips_structured_programming_for_unconfigured_file(self) -> None:
         messages = run_plugin(
             """
